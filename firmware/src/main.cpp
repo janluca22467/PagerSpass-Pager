@@ -496,10 +496,10 @@ void setup() {
     delay(5);
   }
 
-  if (buttonHeld(PIN_BTN_BACK) && buttonHeld(PIN_BTN_OK)) {
+  if (buttonHeld(PIN_BTN_UP) && buttonHeld(PIN_BTN_DOWN)) {
     uiSetup("Zurücksetzen", "Beide Tasten 5 Sekunden halten um alles zu löschen.", "", "", "");
     t = millis();
-    while (buttonHeld(PIN_BTN_BACK) && buttonHeld(PIN_BTN_OK)) {
+    while (buttonHeld(PIN_BTN_UP) && buttonHeld(PIN_BTN_DOWN)) {
       if (millis() - t > 5000) {
         uiSetup("Zurücksetzen", "Werkseinstellungen...", "", "", "");
         factoryReset();
