@@ -17,11 +17,10 @@
 #define SCREEN_W 320
 #define SCREEN_H 240
 
-// hier eure eigene Serveradresse eintragen, kann aber auch im Setup geaendert werden
-#define DEFAULT_SERVER "https://pagerspass.example"
+#define DEFAULT_SERVER "https://pagerspass.de"
 
 #define TZ_INFO "CET-1CEST,M3.5.0,M10.5.0/3"
 #define MAX_MSGS 20
-#define MSG_LEN 200
+#define MSG_LEN 320
 #define ALARM_SECONDS 30
 #define LIGHT_SECONDS 15

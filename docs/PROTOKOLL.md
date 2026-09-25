@@ -1,101 +1,101 @@
 # Protokoll
 
-Damit PagerSpass (oder ein eigener Server) mit dem Pager redet. Alles JSON, Server-Adresse ist im Pager einstellbar (`https://...` oder `http://...:port`).
+So redet der Pager mit PagerSpass. Standard-Server ist `https://pagerspass.de`, kann bei der Einrichtung unter „Erweitert“ geändert werden (z. B. `https://beta.pagerspass.de`).
 
-## 1. Verknüpfen
+## 1. Anmelden
+
+Ganz normal mit dem PagerSpass Konto, derselbe Weg wie im Spiel:
 
 ```
-POST /api/pager/link
-Content-Type: application/json
-
-{
-  "user": "jan",
-  "password": "geheim",
-  "device": "Pager-A1B2",
-  "fw": "1.0.0"
-}
+POST /api/konto/anmelden
+{ "benutzername": "jan", "passwort": "geheim" }
 ```
 
-Antwort OK (`200`):
+Antwort: das Konto mit `merkmal` (das ist der Token). Den speichert der Pager, das Passwort nicht.
 
-```json
-{ "token": "abc123...", "name": "Jan" }
+Bei Zwei-Faktor kommt stattdessen `{"zweiFaktor":true,"anfrage":"…","ziel":"j***@…"}`. Die Einrichtungsseite fragt dann den Code ab:
+
+```
+POST /api/konto/anmelden/zweifaktor
+{ "anfrage": "…", "code": "123456" }
 ```
 
-Fehler (`401` o.ä.):
-
-```json
-{ "error": "Benutzername oder Passwort falsch" }
-```
-
-Der Text in `error` wird so auf der Einrichtungsseite angezeigt.
+Fehler kommen als `{"fehler":"…"}` und werden so auf der Einrichtungsseite angezeigt.
 
 ## 2. Verbindung
 
-WebSocket:
+WebSocket auf
 
 ```
-/api/pager/ws?token=<token>&device=Pager-A1B2
+/hub/pager
+Authorization: Bearer <merkmal>
 ```
 
-Der Pager hält die Verbindung offen und verbindet sich alle 5 s neu, wenn sie abbricht. Ping/Pong vom WebSocket selbst wird unterstützt.
+Kein Premium, kein QR-Code nötig. Der Pager bekommt die Alarme vom eigenen Platz in der Runde, der PC spielt ganz normal weiter.
 
 ## Server → Pager
 
-Runde:
+Runde (bei jeder Änderung, alle ~10 s geprüft):
 
 ```json
-{ "t": "round", "state": "active", "name": "Wache 1" }
 { "t": "round", "state": "waiting" }
+{ "t": "round", "state": "lobby",  "name": "Stade", "code": "ABC123", "funkrufname": null }
+{ "t": "round", "state": "active", "name": "Stade", "code": "ABC123", "funkrufname": "Florian Stade 1/46-1" }
 ```
 
-Am besten direkt nach dem Verbinden einmal den aktuellen Stand schicken.
-
-Alarm:
+Alarm – genau der Alarm vom Melder im Spiel:
 
 ```json
 {
   "t": "alarm",
-  "id": "a1b2c3",
-  "text": "Nachrichtentechnik\nEmmerl",
-  "adr": 1,
-  "prio": 0,
-  "ts": 1790374214
+  "alarm": {
+    "incidentId": "e4c82be9",
+    "einsatznummer": "E-0002",
+    "schleife": "FW Stade",
+    "stichwort": "B3",
+    "stichwortText": "Wohnhausbrand",
+    "meldebild": "Rauch aus Dachstuhl",
+    "adresse": "Hauptstraße 5",
+    "ortsteil": null,
+    "prioritaet": 3,
+    "zeit": "2026-09-25T18:30:00+00:00",
+    "einheiten": ["HLF 1/46-1", "DLK 1/33-1"],
+    "zusatztext": null,
+    "funkgruppe": "3301 Kreis West"
+  }
 }
 ```
 
-| Feld | |
-|---|---|
-| `id` | beliebig, kommt bei der Quittung zurück |
-| `text` | max. ~190 Zeichen, `\n` = neue Zeile, Umlaute gehen |
-| `adr` | Unteradresse 1–4, wird als `Adr.1` angezeigt |
-| `prio` | 1 = hohe Priorität (zeigt `!` im Balken) |
-| `ts` | Unix-Zeit, optional (sonst Uhrzeit vom Pager) |
+Der Pager baut daraus dieselben Zeilen wie der DME im Spiel:
 
-Token ungültig / Pager im Konto gelöscht:
+```
+B3 Wohnhausbrand
+Hauptstraße 5
+Rauch aus Dachstuhl
+GRUPPE 3301 Kreis West
+EINH: HLF 1/46-1, DLK 1/33-1
+```
+
+Oben im Balken stehen Zeit und Schleife.
+
+Merkmal ungültig (z. B. Passwort geändert):
 
 ```json
 { "t": "unlinked" }
 ```
 
-→ Pager löscht den Token und startet die Verknüpfung neu.
+→ Pager startet die Anmeldung neu.
 
 ## Pager → Server
 
-Quittung:
+Quittieren:
 
 ```json
-{ "t": "ack", "id": "a1b2c3" }
+{ "t": "ack" }
 ```
 
-Status (jede Minute):
+Das ist dasselbe wie „Quittieren“ im Spiel.
 
-```json
-{ "t": "status", "bat": 87, "rssi": -61, "fw": "1.0.0" }
-```
+## Testserver
 
-`bat` ist -1 wenn kein Akku gemessen wird.
-
-## Beispiel
-
-`tools/testserver/server.py` macht genau das, gut 100 Zeilen Python. Kann man gut als Vorlage nehmen.
+`tools/testserver/server.py` macht dasselbe ohne Spiel, zum Ausprobieren.

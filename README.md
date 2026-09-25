@@ -9,7 +9,8 @@ Du bist in einer Runde am PC, es kommt ein Alarm – und der Melder auf dem Tisc
 ## Was kann er?
 
 - Alarmierung mit Ton, roter LED und Anzeige wie im Spiel (Datum, Uhrzeit, Adresse, Text)
-- Quittieren per Tastendruck, die Quittung geht zurück an PagerSpass
+- Quittieren per Tastendruck – im Spiel ist der Alarm dann auch quittiert
+- Anmeldung mit dem normalen PagerSpass Konto, kein Premium nötig
 - Nachrichtenspeicher (die letzten 20)
 - Melder-Menü: Lautstärke, Alarmton, Helligkeit, Stumm, Info …
 - Einrichtung komplett über das Handy, kein Programmieren nötig
@@ -20,7 +21,7 @@ Du bist in einer Runde am PC, es kommt ein Alarm – und der Melder auf dem Tisc
 1. Einschalten → „Willkommen zu PagerSpass Pager“
 2. Mit dem Handy ins WLAN **Pager-XXXX** gehen, die Einrichtungsseite geht von selbst auf
 3. Eigenes WLAN eintragen
-4. PagerSpass Benutzername + Passwort eintragen
+4. PagerSpass Benutzername + Passwort eintragen (wie im Spiel)
 5. Fertig – der Pager wartet jetzt auf eine Runde
 
 ## Teile
@@ -35,6 +36,8 @@ ESP32-C3 SuperMini, 2" ST7789 Display, 4 Taster, Mini-Lautsprecher, rote LED, Li
 | `case/` | Gehäuse, OpenSCAD-Datei + fertige STL |
 | `hardware/` | Schaltplan |
 | `tools/testserver/` | Testserver zum Ausprobieren ohne Spiel |
+
+Braucht PagerSpass mit Pager-Anschluss (`/hub/pager`).
 | `docs/` | Anleitung, Bedienung, Protokoll |
 
 ## Doku

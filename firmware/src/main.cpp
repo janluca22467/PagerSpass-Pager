@@ -25,13 +25,13 @@ static Menu editing;
 static Confirm confirming;
 static Screen confirmBack;
 
-static String alarmId;
 static uint32_t alarmStart = 0;
 static uint32_t lastInput = 0;
 static bool lightOn = true;
-static uint32_t lastTick = 0, lastStatus = 0;
+static uint32_t lastTick = 0;
 static uint32_t wifiTryStart = 0, doneAt = 0;
 static String pendingSsid, pendingPass;
+static String pendingServer, pendingRequest;
 
 static int readBattery() {
   uint32_t mv = 0;
@@ -65,10 +65,13 @@ static void showSetupAccount() {
   String ip = WiFi.localIP().toString();
   switch (setupState) {
     case SS_LINKING:
-      uiSetup("Einrichtung 2/2", "Verknüpfe mit PagerSpass...", "", "", "");
+      uiSetup("Einrichtung 2/2", "Melde bei PagerSpass an...", "", "", "");
       break;
     case SS_LINK_FAIL:
-      uiSetup("Einrichtung 2/2", "Verknüpfen fehlgeschlagen:", "", setupError, "http://" + ip);
+      uiSetup("Einrichtung 2/2", "Anmeldung fehlgeschlagen:", "", setupError, "http://" + ip);
+      break;
+    case SS_CODE:
+      uiSetup("Einrichtung 2/2", "Bestätigungscode", "", "Gib den Code aus der E-Mail im Browser ein.", "");
       break;
     case SS_DONE:
       uiSetup("Fertig", "Dein Pager ist verknüpft.", "Hallo " + cfg.user + "!", "", "");
@@ -81,13 +84,12 @@ static void showSetupAccount() {
 static void onAlarm(const Alarm &a) {
   Msg m = {};
   m.ts = a.ts ? a.ts : (uint32_t)time(nullptr);
-  m.adr = a.adr;
   m.prio = a.prio;
   m.read = 0;
+  strlcpy(m.head, a.head.c_str(), sizeof(m.head));
   strlcpy(m.text, a.text.c_str(), sizeof(m.text));
   addMsg(m);
 
-  alarmId = a.id;
   alarmStart = millis();
   msgIdx = 0;
   msgScroll = 0;
@@ -99,10 +101,11 @@ static void onAlarm(const Alarm &a) {
   go(S_ALARM);
 }
 
-static void onRound(RoundState r, const String &name) {
-  bool started = r == R_ACTIVE && st.round != R_ACTIVE;
+static void onRound(RoundState r, const String &name, const String &callsign) {
+  bool started = r == R_ACTIVE && st.round != R_ACTIVE && st.round != R_UNKNOWN;
   st.round = r;
   st.roundName = name;
+  st.callsign = callsign;
   if (started && screen != S_ALARM) playBeep();
   if (screen == S_HOME) dirty = true;
 }
@@ -181,20 +184,35 @@ static void setupLoop() {
     }
   }
 
+  Login login;
+  bool tried = false;
   if (takeAccountRequest(a, b, c)) {
-    dirty = true;
     showSetupAccount();
-    String token, err;
-    if (psLink(a, b, c, token, err)) {
-      cfg.server = a;
-      cfg.user = b;
-      cfg.token = token;
+    pendingServer = a;
+    login = psLogin(a, b, c);
+    tried = true;
+  }
+  if (takeCodeRequest(a)) {
+    showSetupAccount();
+    login = psLogin2fa(pendingServer, pendingRequest, a);
+    tried = true;
+  }
+  if (tried) {
+    if (login.ok) {
+      cfg.server = pendingServer;
+      cfg.user = login.user;
+      cfg.token = login.token;
       saveSettings();
       setupState = SS_DONE;
       doneAt = millis();
       playBeep();
+    } else if (login.twoFactor) {
+      pendingRequest = login.request;
+      setupHint = login.target;
+      setupError = "";
+      setupState = SS_CODE;
     } else {
-      setupError = err;
+      setupError = login.err;
       setupState = SS_LINK_FAIL;
     }
     dirty = true;
@@ -311,8 +329,7 @@ static void openMsg(int i) {
 static void ackAlarm() {
   soundStop();
   ledBlink(false);
-  psAck(alarmId);
-  alarmId = "";
+  psAck();
   openMsg(0);
 }
 
@@ -467,11 +484,6 @@ static void runLoop() {
       int m = (time(nullptr) / 60) % 60;
       if (m != lastMin) { lastMin = m; dirty = true; }
     }
-  }
-
-  if (now - lastStatus > 60000) {
-    lastStatus = now;
-    psSendStatus(st.battery, st.rssi);
   }
 
   if (dirty) {

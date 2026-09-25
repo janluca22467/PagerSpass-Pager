@@ -9,6 +9,7 @@ struct Status {
   bool server = false;
   RoundState round = R_UNKNOWN;
   String roundName;
+  String callsign;
 };
 
 extern Status st;

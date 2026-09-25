@@ -21,6 +21,7 @@ void storeBegin() {
 
   msgCount = prefs.getInt("mcount", 0);
   if (msgCount < 0 || msgCount > MAX_MSGS) msgCount = 0;
+  if (prefs.getBytesLength("msgs") != sizeof(Msg) * msgCount) msgCount = 0;
   if (msgCount) prefs.getBytes("msgs", msgs, sizeof(Msg) * msgCount);
 }
 

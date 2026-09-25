@@ -4,9 +4,9 @@
 
 struct Msg {
   uint32_t ts;
-  uint8_t adr;
   uint8_t read;
   uint8_t prio;
+  char head[18];
   char text[MSG_LEN];
 };
 

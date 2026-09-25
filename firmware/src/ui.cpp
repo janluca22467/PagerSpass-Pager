@@ -103,8 +103,11 @@ void uiHome() {
     top = "Keine Verbindung";
     bottom = "Verbinde mit PagerSpass...";
   } else if (st.round == R_ACTIVE) {
-    top = st.roundName.length() ? String("Runde: ") + st.roundName : String("Runde läuft");
-    bottom = "Bereit";
+    top = st.callsign.length() ? st.callsign : String("Runde: ") + st.roundName;
+    bottom = "BETRIEBSBEREIT";
+  } else if (st.round == R_LOBBY) {
+    top = String("Lobby: ") + st.roundName;
+    bottom = "Warte auf Start...";
   } else {
     top = "Warte auf Runde...";
     bottom = cfg.user.length() ? String("Angemeldet als ") + cfg.user : String("Bereit");
@@ -146,7 +149,7 @@ void uiMsgList(int sel) {
     bool s = i == sel;
     if (s) cv.fillRect(0, y, SCREEN_W, h - 2, 1);
     if (!msgs[i].read) cv.fillCircle(10, y + 12, 4, s ? 0 : 1);
-    textAt(20, y + 16, fmtTime(msgs[i].ts, false) + "   Adr." + msgs[i].adr, F_SMALL, s);
+    textAt(20, y + 16, fmtTime(msgs[i].ts, false) + "   " + msgs[i].head, F_SMALL, s);
     String line[1];
     String t = msgs[i].text;
     t.replace("\n", " ");
@@ -159,7 +162,9 @@ void uiMsgList(int sel) {
 int uiMsg(int i, int scroll) {
   clearScreen();
   const Msg &m = msgs[i];
-  String right = String(m.prio ? "! " : "") + "Adr." + m.adr;
+  String right = m.head;
+  while (right.length() > 1 && textWidth(right, u8g2_font_helvR14_tf) > 130) right.remove(right.length() - 1);
+  if (m.prio >= 3) right = "! " + right;
   headerBar(fmtTime(m.ts, true), right);
 
   const int maxLines = 40, visible = 7;

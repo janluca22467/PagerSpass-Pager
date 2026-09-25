@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Kleiner Testserver fuer den PagerSpass Pager.
-Macht das gleiche wie der echte PagerSpass Server, nur ohne Spiel drumrum.
+Spricht dasselbe wie PagerSpass (/api/konto/anmelden + /hub/pager), nur ohne Spiel drumrum.
 
     pip install -r requirements.txt
     python server.py
@@ -12,7 +12,7 @@ import asyncio
 import json
 import secrets
 import sys
-import time
+from datetime import datetime, timezone
 
 from aiohttp import web
 
@@ -21,47 +21,41 @@ PASSWORD = "test"
 
 tokens = {}
 pagers = {}
-round_state = {"state": "waiting", "name": ""}
+round_state = {"t": "round", "state": "waiting"}
 
 
-async def link(request):
+async def login(request):
     data = await request.json()
-    user = data.get("user", "")
-    if not user or data.get("password") != PASSWORD:
-        return web.json_response({"error": "Benutzername oder Passwort falsch"}, status=401)
-    token = secrets.token_hex(16)
+    user = data.get("benutzername", "")
+    if not user or data.get("passwort") != PASSWORD:
+        return web.json_response({"fehler": "Benutzername oder Passwort falsch."}, status=400)
+    token = secrets.token_urlsafe(32)
     tokens[token] = user
-    print(f"[link] {data.get('device')} -> {user}")
-    return web.json_response({"token": token, "name": user})
+    print(f"[login] {user}")
+    return web.json_response({"kennung": user, "benutzername": user, "anzeigename": user, "merkmal": token})
 
 
 async def ws_handler(request):
-    token = request.query.get("token", "")
+    auth = request.headers.get("Authorization", "")
+    token = auth[7:] if auth.startswith("Bearer ") else request.query.get("access_token", "")
+    ws = web.WebSocketResponse(heartbeat=20)
+    await ws.prepare(request)
     if token not in tokens:
-        ws = web.WebSocketResponse()
-        await ws.prepare(request)
         await ws.send_json({"t": "unlinked"})
         await ws.close()
         return ws
 
-    ws = web.WebSocketResponse(heartbeat=30)
-    await ws.prepare(request)
-    device = request.query.get("device", "?")
-    pagers[device] = ws
-    print(f"[ws] {device} ({tokens[token]}) verbunden")
-    await ws.send_json({"t": "round", **round_state})
+    user = tokens[token]
+    pagers[token] = ws
+    print(f"[ws] Pager von {user} verbunden")
+    await ws.send_json(round_state)
 
     async for msg in ws:
-        if msg.type != web.WSMsgType.TEXT:
-            continue
-        data = json.loads(msg.data)
-        if data.get("t") == "ack":
-            print(f"[ack] {device} hat {data.get('id')} quittiert")
-        elif data.get("t") == "status":
-            print(f"[status] {device} akku={data.get('bat')}% rssi={data.get('rssi')}")
+        if msg.type == web.WSMsgType.TEXT and json.loads(msg.data).get("t") == "ack":
+            print(f"[ack] {user} hat quittiert")
 
-    pagers.pop(device, None)
-    print(f"[ws] {device} getrennt")
+    pagers.pop(token, None)
+    print(f"[ws] Pager von {user} getrennt")
     return ws
 
 
@@ -75,38 +69,54 @@ async def broadcast(obj):
 
 async def console():
     loop = asyncio.get_running_loop()
-    print("Befehle: /start <name>, /ende, /prio <text>, /adr <1-4> <text>, /quit")
-    print("Alles andere wird als Alarm geschickt.")
+    print("Befehle: /start <ort>, /lobby <ort>, /ende, /prio <text>, /quit")
+    print("Alles andere wird als Alarm geschickt (Format: STICHWORT Text | Adresse | Meldebild).")
     while True:
         line = (await loop.run_in_executor(None, sys.stdin.readline)).strip()
         if not line:
             continue
-        adr, prio = 1, 0
+        prio = 1
         if line == "/quit":
             break
-        if line.startswith("/start"):
-            round_state.update(state="active", name=line[6:].strip())
-            await broadcast({"t": "round", **round_state})
+        if line.startswith("/start") or line.startswith("/lobby"):
+            state = "active" if line.startswith("/start") else "lobby"
+            round_state.clear()
+            round_state.update(t="round", state=state, name=line[6:].strip() or "Teststadt",
+                               code="TEST01", funkrufname="Florian Test 1/46-1")
+            await broadcast(round_state)
             continue
         if line == "/ende":
-            round_state.update(state="waiting", name="")
-            await broadcast({"t": "round", **round_state})
+            round_state.clear()
+            round_state.update(t="round", state="waiting")
+            await broadcast(round_state)
             continue
         if line.startswith("/prio "):
-            prio, line = 1, line[6:]
-        elif line.startswith("/adr "):
-            parts = line.split(" ", 2)
-            adr, line = int(parts[1]), parts[2] if len(parts) > 2 else ""
-        alarm = {"t": "alarm", "id": secrets.token_hex(4), "text": line.replace("\\n", "\n"),
-                 "adr": adr, "prio": prio, "ts": int(time.time())}
-        await broadcast(alarm)
+            prio, line = 3, line[6:]
+        teile = [t.strip() for t in line.split("|")]
+        kopf = teile[0].split(" ", 1)
+        alarm = {
+            "incidentId": secrets.token_hex(4),
+            "einsatznummer": "E-0001",
+            "schleife": "FW Test",
+            "stichwort": kopf[0],
+            "stichwortText": kopf[1] if len(kopf) > 1 else "",
+            "adresse": teile[1] if len(teile) > 1 else "Musterstraße 1",
+            "ortsteil": None,
+            "meldebild": teile[2] if len(teile) > 2 else "",
+            "prioritaet": prio,
+            "zeit": datetime.now(timezone.utc).isoformat(),
+            "einheiten": ["Florian Test 1/46-1"],
+            "zusatztext": None,
+            "funkgruppe": None,
+        }
+        await broadcast({"t": "alarm", "alarm": alarm})
         print(f"[alarm] an {len(pagers)} Pager gesendet")
 
 
 async def main():
     app = web.Application()
-    app.router.add_post("/api/pager/link", link)
-    app.router.add_get("/api/pager/ws", ws_handler)
+    app.router.add_post("/api/konto/anmelden", login)
+    app.router.add_get("/hub/pager", ws_handler)
     runner = web.AppRunner(app)
     await runner.setup()
     await web.TCPSite(runner, "0.0.0.0", PORT).start()

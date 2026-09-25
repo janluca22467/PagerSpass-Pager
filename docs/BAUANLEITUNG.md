@@ -77,7 +77,6 @@ Reihenfolge wie ich es gemacht habe:
 
 1. [VS Code](https://code.visualstudio.com/) + PlatformIO Erweiterung installieren
 2. Ordner `firmware/` öffnen
-3. Optional in `src/config.h` euren Server bei `DEFAULT_SERVER` eintragen (kann man sonst auch später bei der Einrichtung unter „Erweitert“ ändern)
 4. **Schiebeschalter auf AUS**, dann den ESP per USB-C anstecken
 5. Unten auf den Pfeil (Upload) klicken
 
@@ -118,8 +117,8 @@ Bei der Einrichtung unter „Erweitert“ als Server `http://<IP von deinem PC>:
 Dann im Terminal:
 
 ```
-/start Wache 1
-Brand 3 - Wohnhaus, Musterstraße 5
+/start Stade
+B3 Wohnhausbrand | Hauptstraße 5 | Rauch aus Dachstuhl
 ```
 
 → Pager sollte piepen. Mehr Befehle stehen beim Start im Terminal.

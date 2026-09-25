@@ -8,14 +8,15 @@
 
 SetupState setupState = SS_WIFI;
 String setupError;
+String setupHint;
 
 static WebServer server(80);
 static DNSServer dns;
 static bool running = false;
 static bool apOn = false;
 
-static bool wifiReq = false, accReq = false;
-static String reqSsid, reqPass, reqServer, reqUser, reqUserPass;
+static bool wifiReq = false, accReq = false, codeReq = false;
+static String reqSsid, reqPass, reqServer, reqUser, reqUserPass, reqCode;
 
 static const char PAGE_HEAD[] PROGMEM = R"(<!DOCTYPE html><html lang="de"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>PagerSpass Pager</title>
@@ -38,18 +39,24 @@ static const char PAGE_WIFI[] PROGMEM = R"(<div class="step">Schritt 1 von 2</di
 <button>Verbinden</button></form>)";
 
 static const char PAGE_ACCOUNT[] PROGMEM = R"(<div class="step">Schritt 2 von 2</div><h1>PagerSpass verknüpfen</h1>
-<p>Melde dich mit deinem PagerSpass Konto an.</p>%ERR%
+<p>Melde dich mit deinem PagerSpass Konto an, genau wie im Spiel.</p>%ERR%
 <form method="post" action="/konto">
-<label>Benutzername</label><input name="user" required autocapitalize="none">
+<label>Benutzername</label><input name="user" required autocapitalize="none" autocomplete="username">
 <label>Passwort</label><input name="pass" type="password" required>
 <details><summary style="font-size:13px;margin-top:12px">Erweitert</summary>
 <label>Server</label><input name="server" value="%SERVER%"></details>
-<button>Verknüpfen</button></form>)";
+<button>Anmelden</button></form>)";
+
+static const char PAGE_CODE[] PROGMEM = R"(<div class="step">Schritt 2 von 2</div><h1>Bestätigungscode</h1>
+<p>Wir haben dir einen Code geschickt%HINT%.</p>%ERR%
+<form method="post" action="/code">
+<label>Code</label><input name="code" required inputmode="numeric" autocomplete="one-time-code">
+<button>Bestätigen</button></form>)";
 
 static const char PAGE_WAIT[] PROGMEM = R"(<h1 id="t">%TITLE%</h1><p id="m">Bitte kurz warten…</p>
 <script>
 setInterval(()=>fetch('/state').then(r=>r.json()).then(s=>{
-if(s.state=='account'||s.state=='wifi_fail'||s.state=='link_fail'||s.state=='wifi')location='/';
+if(['account','wifi_fail','link_fail','wifi','code'].includes(s.state))location='/';
 if(s.state=='done'){document.getElementById('t').innerText='Fertig!';
 document.getElementById('m').innerText='Dein Pager ist jetzt mit PagerSpass verbunden. Du kannst dieses Fenster schließen.';}
 }).catch(()=>{}),1500);
@@ -107,8 +114,15 @@ static void handleRoot() {
       send(p);
       break;
     }
+    case SS_CODE: {
+      String p = FPSTR(PAGE_CODE);
+      p.replace("%HINT%", setupHint.length() ? " an " + htmlEscape(setupHint) : "");
+      p.replace("%ERR%", errBlock());
+      send(p);
+      break;
+    }
     case SS_LINKING:
-      pageWait("Verknüpfe…");
+      pageWait("Melde an…");
       break;
     case SS_DONE:
       send(FPSTR(PAGE_DONE));
@@ -137,11 +151,20 @@ static void handleAccount() {
   if (!reqServer.length()) reqServer = cfg.server;
   accReq = true;
   setupState = SS_LINKING;
-  pageWait("Verknüpfe…");
+  pageWait("Melde an…");
+}
+
+static void handleCode() {
+  if (setupState != SS_CODE) return handleRoot();
+  reqCode = server.arg("code");
+  reqCode.trim();
+  codeReq = true;
+  setupState = SS_LINKING;
+  pageWait("Melde an…");
 }
 
 static void handleState() {
-  static const char *names[] = {"wifi", "trying", "wifi_fail", "account", "linking", "link_fail", "done"};
+  static const char *names[] = {"wifi", "trying", "wifi_fail", "account", "linking", "link_fail", "code", "done"};
   JsonDocument doc;
   doc["state"] = names[setupState];
   doc["error"] = setupError;
@@ -180,6 +203,7 @@ void portalBegin(bool withAP) {
     server.on("/", HTTP_GET, handleRoot);
     server.on("/wifi", HTTP_POST, handleWifi);
     server.on("/konto", HTTP_POST, handleAccount);
+    server.on("/code", HTTP_POST, handleCode);
     server.on("/state", HTTP_GET, handleState);
     server.onNotFound(handleCaptive);
     routes = true;
@@ -228,5 +252,12 @@ bool takeAccountRequest(String &srv, String &user, String &pass) {
   user = reqUser;
   pass = reqUserPass;
   reqUserPass = "";
+  return true;
+}
+
+bool takeCodeRequest(String &code) {
+  if (!codeReq) return false;
+  codeReq = false;
+  code = reqCode;
   return true;
 }
