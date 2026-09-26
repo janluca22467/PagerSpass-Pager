@@ -62,7 +62,11 @@ static void showSetupWifi() {
 }
 
 static void showSetupAccount() {
+#ifdef SIM
+  String ip = "localhost:8180";
+#else
   String ip = WiFi.localIP().toString();
+#endif
   switch (setupState) {
     case SS_LINKING:
       uiSetup("Einrichtung 2/2", "Melde bei PagerSpass an...", "", "", "");
@@ -77,7 +81,7 @@ static void showSetupAccount() {
       uiSetup("Fertig", "Dein Pager ist verknüpft.", "Hallo " + cfg.user + "!", "", "");
       break;
     default:
-      uiSetup("Einrichtung 2/2", "PagerSpass verknüpfen", "", "Gib jetzt im Browser deine PagerSpass Daten ein.", "Im Heimnetz: http://" + ip);
+      uiSetup("Einrichtung 2/2", "PagerSpass verknüpfen", "", "Gib jetzt im Browser deine PagerSpass Daten ein.", "Im Browser: http://" + ip);
   }
 }
 
