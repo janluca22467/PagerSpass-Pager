@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "author": "janluca22467",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "board-aitewinrobot-esp32c3-supermini", "id": "esp", "top": 250, "left": -150, "attrs": {} },
+    { "type": "wokwi-ili9341", "id": "lcd", "top": -60, "left": 60, "rotate": 90, "attrs": {} },
+    { "type": "wokwi-pushbutton", "id": "btnBack", "top": -150, "left": 60, "attrs": { "color": "black", "label": "ZURÜCK", "key": "Escape" } },
+    { "type": "wokwi-pushbutton", "id": "btnUp", "top": -150, "left": 170, "attrs": { "color": "black", "label": "HOCH", "key": "ArrowUp" } },
+    { "type": "wokwi-pushbutton", "id": "btnDown", "top": -150, "left": 280, "attrs": { "color": "black", "label": "RUNTER", "key": "ArrowDown" } },
+    { "type": "wokwi-pushbutton", "id": "btnOk", "top": 60, "left": 420, "attrs": { "color": "red", "label": "OK", "key": "Enter" } },
+    { "type": "wokwi-led", "id": "led", "top": -150, "left": 420, "attrs": { "color": "red", "label": "Alarm" } },
+    { "type": "wokwi-resistor", "id": "r3", "top": -60, "left": 420, "rotate": 90, "attrs": { "value": "330" } },
+    { "type": "wokwi-buzzer", "id": "spk", "top": 180, "left": 420, "attrs": { "volume": "0.3" } }
+  ],
+  "connections": [
+    [ "esp:4", "lcd:SCK", "orange", [] ],
+    [ "esp:6", "lcd:MOSI", "blue", [] ],
+    [ "esp:7", "lcd:CS", "green", [] ],
+    [ "esp:2", "lcd:D/C", "purple", [] ],
+    [ "esp:3", "lcd:RST", "gray", [] ],
+    [ "esp:3V3", "lcd:VCC", "red", [] ],
+    [ "esp:GND", "lcd:GND", "black", [] ],
+    [ "esp:10", "lcd:LED", "yellow", [] ],
+
+    [ "esp:8", "btnBack:1.l", "white", [] ],
+    [ "btnBack:2.l", "esp:GND", "black", [] ],
+    [ "esp:RX", "btnUp:1.l", "white", [] ],
+    [ "btnUp:2.l", "esp:GND", "black", [] ],
+    [ "esp:TX", "btnDown:1.l", "white", [] ],
+    [ "btnDown:2.l", "esp:GND", "black", [] ],
+    [ "esp:9", "btnOk:1.l", "white", [] ],
+    [ "btnOk:2.l", "esp:GND", "black", [] ],
+
+    [ "esp:1", "r3:1", "red", [] ],
+    [ "r3:2", "led:A", "red", [] ],
+    [ "led:C", "esp:GND", "black", [] ],
+
+    [ "esp:5", "spk:2", "orange", [] ],
+    [ "spk:1", "esp:GND", "black", [] ]
+  ],
+  "dependencies": {}
+}

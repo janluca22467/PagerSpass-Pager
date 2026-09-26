@@ -1,9 +1,15 @@
 #include "display.h"
 #include "config.h"
 #include <SPI.h>
-#include <Adafruit_ST7789.h>
 
+// im Simulator (Wokwi) gibt es kein ST7789, der ILI9341 hat aber auch 320x240
+#ifdef SIM
+#include <Adafruit_ILI9341.h>
+static Adafruit_ILI9341 tft(&SPI, PIN_TFT_DC, PIN_TFT_CS, PIN_TFT_RST);
+#else
+#include <Adafruit_ST7789.h>
 static Adafruit_ST7789 tft(&SPI, PIN_TFT_CS, PIN_TFT_DC, PIN_TFT_RST);
+#endif
 GFXcanvas1 cv(SCREEN_W, SCREEN_H);
 U8G2_FOR_ADAFRUIT_GFX u8;
 
@@ -17,8 +23,12 @@ void displayBegin() {
   backlight(0);
 
   SPI.begin(PIN_SCK, -1, PIN_MOSI, PIN_TFT_CS);
+#ifdef SIM
+  tft.begin(40000000);
+#else
   tft.init(240, 320);
   tft.setSPISpeed(40000000);
+#endif
   tft.setRotation(1);
   tft.fillScreen(COL_BG);
 

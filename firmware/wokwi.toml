@@ -1,0 +1,9 @@
+[wokwi]
+version = 1
+firmware = '.pio/build/sim/firmware.bin'
+elf = '.pio/build/sim/firmware.elf'
+
+# Einrichtungsseite vom Pager: http://localhost:8180
+[[net.forward]]
+from = "localhost:8180"
+to = "target:80"

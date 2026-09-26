@@ -9,7 +9,11 @@ static Preferences prefs;
 
 void storeBegin() {
   prefs.begin("pager", false);
+#ifdef SIM
+  cfg.ssid = prefs.getString("ssid", "Wokwi-GUEST");
+#else
   cfg.ssid = prefs.getString("ssid", "");
+#endif
   cfg.pass = prefs.getString("pass", "");
   cfg.server = prefs.getString("server", DEFAULT_SERVER);
   cfg.token = prefs.getString("token", "");

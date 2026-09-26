@@ -46,6 +46,7 @@ Braucht PagerSpass mit Pager-Anschluss (`/hub/pager`).
 - [Bauanleitung](docs/BAUANLEITUNG.md)
 - [Bedienung](docs/BEDIENUNG.md)
 - [Protokoll (für Server/Spiel)](docs/PROTOKOLL.md)
+- [Am Mac testen ohne Hardware (Simulator)](docs/SIMULATOR.md)
 
 ## Lizenz
 

@@ -17,7 +17,11 @@
 #define SCREEN_W 320
 #define SCREEN_H 240
 
+#ifdef SIM
+#define DEFAULT_SERVER "http://host.wokwi.internal:8080"
+#else
 #define DEFAULT_SERVER "https://pagerspass.de"
+#endif
 
 #define TZ_INFO "CET-1CEST,M3.5.0,M10.5.0/3"
 #define MAX_MSGS 20
