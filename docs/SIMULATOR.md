@@ -61,6 +61,20 @@ Man kann die Knöpfe anklicken oder die Tastatur nehmen (vorher einmal ins Simul
 | Pfeil runter | RUNTER |
 | Esc | ZURÜCK |
 
+## Log
+
+Unten in VS Code im Terminal-Bereich zeigt Wokwi die Ausgabe vom Pager, z. B.:
+
+```
+[boot] PagerSpass Pager 1.0.0
+[boot] Display gestartet
+[wifi] verbinde mit Wokwi-GUEST
+[wifi] verbunden, IP 10.13.37.2
+[setup] warte auf Anmeldung, Einrichtungsseite ist offen
+```
+
+Wenn was nicht geht: diese Zeilen angucken, da steht wo es hängt.
+
 ## Probleme
 
 | Problem | Lösung |
@@ -68,4 +82,5 @@ Man kann die Knöpfe anklicken oder die Tastatur nehmen (vorher einmal ins Simul
 | „firmware.bin not found“ | Erst bauen mit `env:sim`, nicht `env:pager` |
 | localhost:8180 geht nicht | Simulator läuft? Pager zeigt „PagerSpass verknüpfen“? Ein paar Sekunden warten |
 | „Server nicht erreichbar“ beim Testserver | Läuft `python3 server.py`? Server muss `http://host.wokwi.internal:8080` sein |
+| Display bleibt schwarz | Nach dem Ändern immer neu bauen (`env:sim`) und den Simulator neu starten. Im Log muss „Display gestartet“ stehen |
 | Alles zurücksetzen | Menü → Werkseinstellungen, oder Simulator neu starten und HOCH+RUNTER halten |

@@ -117,6 +117,7 @@ static void onUnlinked() {
 }
 
 static void startRun() {
+  Serial.println("[run] verbinde mit " + cfg.server);
   mode = M_RUN;
   WiFi.setAutoReconnect(true);
   configTzTime(TZ_INFO, "pool.ntp.org", "time.google.com");
@@ -127,6 +128,7 @@ static void startRun() {
 }
 
 static void startAccountSetup(bool withAP) {
+  Serial.println("[setup] warte auf Anmeldung, Einrichtungsseite ist offen");
   mode = M_SETUP_ACCOUNT;
   setupState = SS_ACCOUNT;
   portalBegin(withAP);
@@ -494,10 +496,12 @@ static void runLoop() {
 
 void setup() {
   Serial.begin(115200);
+  Serial.println("\n[boot] PagerSpass Pager " FW_VERSION);
   storeBegin();
   buttonsBegin();
   soundBegin();
   displayBegin();
+  Serial.println("[boot] Display gestartet");
   uiWelcome();
   backlight(4);
   playBeep();
@@ -520,12 +524,15 @@ void setup() {
     }
   }
 
+  Serial.println("[wifi] verbinde mit " + cfg.ssid);
   if (cfg.ssid.length() && connectSaved()) {
+    Serial.println("[wifi] verbunden, IP " + WiFi.localIP().toString());
     if (cfg.token.length()) startRun();
     else startAccountSetup(false);
     return;
   }
 
+  Serial.println("[wifi] kein WLAN, starte Einrichtung " + apName());
   mode = M_SETUP_WIFI;
   setupState = cfg.ssid.length() ? SS_WIFI_FAIL : SS_WIFI;
   if (cfg.ssid.length()) setupError = "Gespeichertes WLAN \"" + cfg.ssid + "\" nicht erreichbar";

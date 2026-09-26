@@ -11,8 +11,14 @@
 #define PIN_BTN_BACK 8
 #define PIN_BTN_OK   9
 #define PIN_TFT_BL  10
+#ifdef SIM
+// im Simulator bleiben RX/TX frei fuer die serielle Ausgabe
+#define PIN_BTN_UP   18
+#define PIN_BTN_DOWN 19
+#else
 #define PIN_BTN_UP   20
 #define PIN_BTN_DOWN 21
+#endif
 
 #define SCREEN_W 320
 #define SCREEN_H 240
