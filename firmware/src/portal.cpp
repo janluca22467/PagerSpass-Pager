@@ -149,6 +149,8 @@ static void handleAccount() {
   reqUser.trim();
   reqServer.trim();
   if (!reqServer.length()) reqServer = cfg.server;
+  if (!reqServer.startsWith("http://") && !reqServer.startsWith("https://")) reqServer = "https://" + reqServer;
+  while (reqServer.endsWith("/")) reqServer.remove(reqServer.length() - 1);
   accReq = true;
   setupState = SS_LINKING;
   pageWait("Melde an…");

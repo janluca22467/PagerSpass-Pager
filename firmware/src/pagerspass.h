@@ -15,6 +15,7 @@ struct Login {
   bool ok = false;
   bool twoFactor = false;
   String token, user, request, target, err;
+  String server;
 };
 
 struct PsCallbacks {

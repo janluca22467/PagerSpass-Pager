@@ -205,7 +205,7 @@ static void setupLoop() {
   }
   if (tried) {
     if (login.ok) {
-      cfg.server = pendingServer;
+      cfg.server = login.server.length() ? login.server : pendingServer;
       cfg.user = login.user;
       cfg.token = login.token;
       saveSettings();
@@ -213,6 +213,7 @@ static void setupLoop() {
       doneAt = millis();
       playBeep();
     } else if (login.twoFactor) {
+      if (login.server.length()) pendingServer = login.server;
       pendingRequest = login.request;
       setupHint = login.target;
       setupError = "";

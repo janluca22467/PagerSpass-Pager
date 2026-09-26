@@ -37,8 +37,9 @@ static Url parseUrl(String s) {
   return u;
 }
 
-static Login post(const String &server, const String &path, JsonDocument &req) {
+static Login post(String server, const String &path, JsonDocument &req, bool retry = true) {
   Login r;
+  r.server = server;
   Url u = parseUrl(server);
   String url = String(u.tls ? "https://" : "http://") + u.host + ":" + u.port + u.base + path;
 
@@ -52,11 +53,22 @@ static Login post(const String &server, const String &path, JsonDocument &req) {
     return r;
   }
   http.addHeader("Content-Type", "application/json");
+  const char *keep[] = {"Location"};
+  http.collectHeaders(keep, 1);
   String body;
   serializeJson(req, body);
   int code = http.POST(body);
   String resp = http.getString();
+  String location = http.header("Location");
   http.end();
+
+  // z.B. http:// -> https://, dann einfach nochmal mit der neuen Adresse
+  if ((code == 301 || code == 302 || code == 307 || code == 308) && retry && location.startsWith("http")) {
+    int cut = location.indexOf(path);
+    String next = cut > 0 ? location.substring(0, cut) : location;
+    Serial.println("[http] umgeleitet nach " + next);
+    return post(next, path, req, false);
+  }
 
   if (code <= 0) {
     r.err = "Server nicht erreichbar";
