@@ -47,7 +47,8 @@ Kommt ein Alarm:
 
 - Alarmton (30 Sekunden lang), rote LED blinkt
 - Display: Datum, Uhrzeit und Schleife oben im Balken, darunter Stichwort, Adresse, Meldebild, Einheiten – wie der Melder im Spiel
-- Eine Taste drücken = **quittiert**. Ton und LED gehen aus, und im Spiel ist der Alarm auch quittiert.
+- Eine Taste drücken = **quittiert**. Ton und LED gehen aus, die Meldung verschwindet und der Pager geht zurück auf den Startbildschirm – wie ein echter Melder. Im Spiel ist der Alarm dann auch quittiert. Die Meldung bleibt unter Menü → Nachrichten gespeichert.
+- Der Ton ist derselbe wie im Spiel, und dringende Alarme (Priorität 3) klingen schneller – auch wie im Spiel.
 
 Bei langen Texten mit HOCH/RUNTER scrollen.
 
@@ -59,7 +60,7 @@ OK auf dem Startbildschirm:
 |---|---|
 | Nachrichten | Die letzten 20 Alarme. OK öffnet, in der Nachricht OK = löschen |
 | Lautstärke | Aus, 1–5 |
-| Alarmton | Standard, Zweiton, Sirene, Lang (spielt beim Auswählen an) |
+| Alarmton | Alle 50 Meldertöne aus dem Spiel (Zweiklang, Dreiklang, Sirene …), spielen beim Auswählen an |
 | Helligkeit | 1–5 |
 | Stumm | An/Aus – nur LED, kein Ton |
 | Info | Gerät, Firmware, IP, WLAN, Akku … |

@@ -97,7 +97,7 @@ static void onAlarm(const Alarm &a) {
   alarmStart = millis();
   msgIdx = 0;
   msgScroll = 0;
-  playAlarm(cfg.tone, true);
+  playAlarm(cfg.tone, a.prio, true);
   ledBlink(true);
   lightOn = true;
   lastInput = millis();
@@ -337,7 +337,11 @@ static void ackAlarm() {
   soundStop();
   ledBlink(false);
   psAck();
-  openMsg(0);
+  if (!msgs[0].read) {
+    msgs[0].read = 1;
+    saveMsgs();
+  }
+  go(S_HOME);
 }
 
 static void handleButton(Btn b) {
@@ -402,7 +406,7 @@ static void handleButton(Btn b) {
         if (editing == MN_TONE) editVal = (editVal + toneCount()) % toneCount();
         else editVal = constrain(editVal, minV, maxV);
         if (editing == MN_VOL) { uint8_t old = cfg.volume; cfg.volume = editVal; soundStop(); playBeep(); cfg.volume = old; }
-        if (editing == MN_TONE) { soundStop(); playAlarm(editVal, false); }
+        if (editing == MN_TONE) { soundStop(); playAlarm(editVal, 1, false); }
         if (editing == MN_LIGHT) backlight(editVal);
       } else if (b == B_OK) {
         if (editing == MN_VOL) cfg.volume = editVal;

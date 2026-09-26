@@ -3,7 +3,7 @@
 
 void soundBegin();
 void soundLoop();
-void playAlarm(uint8_t tone, bool loop);
+void playAlarm(uint8_t tone, uint8_t prio, bool loop);
 void playBeep();
 void playClick();
 void soundStop();

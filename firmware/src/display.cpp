@@ -63,7 +63,10 @@ void clearScreen() {
 
 void textAt(int x, int y, const String &s, const uint8_t *font, bool inv) {
   u8.setFont(font);
+  // setFont schaltet den Hintergrund jedes Mal wieder an, darum hier immer neu setzen
+  u8.setFontMode(1);
   u8.setForegroundColor(inv ? 0 : 1);
+  u8.setBackgroundColor(inv ? 1 : 0);
   u8.drawUTF8(x, y, s.c_str());
 }
 

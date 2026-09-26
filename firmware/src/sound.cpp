@@ -1,31 +1,15 @@
 #include "sound.h"
 #include "config.h"
 #include "store.h"
+#include "toene_spiel.h"
 
-struct Note { uint16_t f; uint16_t ms; };
+static const Seg beep[] = {{2400, 2400, 60}, {0, 0, 10}};
+static const Seg click[] = {{3000, 3000, 8}, {0, 0, 1}};
 
-static const Note tone0[] = {{2100, 120}, {0, 60}, {2100, 120}, {0, 60}, {2100, 120}, {0, 500}};
-static const Note tone1[] = {{1600, 250}, {2400, 250}, {1600, 250}, {2400, 250}, {0, 400}};
-static const Note tone2[] = {{1000, 80}, {1300, 80}, {1600, 80}, {1900, 80}, {2200, 80}, {2500, 80}, {0, 300}};
-static const Note tone3[] = {{2800, 700}, {0, 300}, {2800, 700}, {0, 600}};
-static const Note beep[] = {{2400, 60}, {0, 10}};
-static const Note click[] = {{3000, 8}, {0, 1}};
-
-struct Melody { const char *name; const Note *notes; uint8_t len; };
-
-static const Melody melodies[] = {
-  {"Standard", tone0, 6},
-  {"Zweiton", tone1, 5},
-  {"Sirene", tone2, 7},
-  {"Lang", tone3, 4},
-};
-
-static const Melody mBeep = {"", beep, 2};
-static const Melody mClick = {"", click, 2};
-
-static const Melody *cur = nullptr;
+static const Seg *cur = nullptr;
+static uint8_t curLen;
 static uint8_t idx;
-static uint32_t noteEnd;
+static uint32_t segStart;
 static bool looping;
 static bool ledMode;
 static uint32_t ledTimer;
@@ -50,17 +34,23 @@ void soundBegin() {
   digitalWrite(PIN_LED, LOW);
 }
 
-static void start(const Melody *m, bool loop) {
-  cur = m;
+static void start(const Seg *s, uint8_t len, bool loop) {
+  cur = s;
+  curLen = len;
   idx = 0;
   looping = loop;
-  out(cur->notes[0].f);
-  noteEnd = millis() + cur->notes[0].ms;
+  segStart = millis();
+  out(cur[0].f0);
 }
 
-void playAlarm(uint8_t t, bool loop) { start(&melodies[t % toneCount()], loop); }
-void playBeep() { if (!cur) start(&mBeep, false); }
-void playClick() { if (!cur) start(&mClick, false); }
+void playAlarm(uint8_t t, uint8_t prio, bool loop) {
+  const SpielTon &ton = SPIEL_TOENE[t % SPIEL_TOENE_ANZAHL];
+  uint8_t p = constrain(prio, 1, 3) - 1;
+  start(ton.seg[p], ton.len[p], loop);
+}
+
+void playBeep() { if (!cur) start(beep, 2, false); }
+void playClick() { if (!cur) start(click, 2, false); }
 
 void soundStop() {
   cur = nullptr;
@@ -76,14 +66,22 @@ void ledBlink(bool on) {
 
 void soundLoop() {
   uint32_t now = millis();
-  if (cur && (int32_t)(now - noteEnd) >= 0) {
-    if (++idx >= cur->len) {
-      if (looping) idx = 0;
-      else soundStop();
-    }
-    if (cur) {
-      out(cur->notes[idx].f);
-      noteEnd = now + cur->notes[idx].ms;
+  if (cur) {
+    const Seg &s = cur[idx];
+    uint32_t el = now - segStart;
+    if (el >= s.ms) {
+      segStart += s.ms;
+      if (++idx >= curLen) {
+        if (looping) idx = 0;
+        else soundStop();
+      }
+      if (cur) out(cur[idx].f0);
+    } else if (s.f0 != s.f1 && s.f0) {
+      static uint32_t lastGlide;
+      if (now - lastGlide >= 10) {
+        lastGlide = now;
+        out(s.f0 + (int32_t)(s.f1 - s.f0) * (int32_t)el / s.ms);
+      }
     }
   }
   if (ledMode && now - ledTimer > (ledState ? 80 : 400)) {
@@ -93,5 +91,5 @@ void soundLoop() {
   }
 }
 
-const char *toneName(uint8_t t) { return melodies[t % toneCount()].name; }
-uint8_t toneCount() { return sizeof(melodies) / sizeof(melodies[0]); }
+const char *toneName(uint8_t t) { return SPIEL_TOENE[t % SPIEL_TOENE_ANZAHL].name; }
+uint8_t toneCount() { return SPIEL_TOENE_ANZAHL; }
