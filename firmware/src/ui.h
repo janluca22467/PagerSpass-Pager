@@ -22,6 +22,6 @@ void uiMsgList(int sel);
 int uiMsg(int i, int scroll);
 void uiValue(const String &title, const String &value, const String &hint);
 void uiConfirm(const String &question);
-void uiInfo(const String *lines, int n);
+int uiInfo(const String *lines, int n, int scroll);
 
 String fmtTime(uint32_t ts, bool withYear);

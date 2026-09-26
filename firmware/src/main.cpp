@@ -1,8 +1,8 @@
 #include <Arduino.h>
-#include <WiFi.h>
 #include <time.h>
 #include "config.h"
 #include "store.h"
+#include "plattform.h"
 #include "display.h"
 #include "buttons.h"
 #include "sound.h"
@@ -21,6 +21,7 @@ static bool dirty = true;
 
 static int menuSel = 0, listSel = 0, msgIdx = 0, msgScroll = 0, msgLines = 0;
 static int editVal = 0;
+static int infoScroll = 0;
 static Menu editing;
 static Confirm confirming;
 static Screen confirmBack;
@@ -35,8 +36,14 @@ static String pendingServer, pendingRequest;
 
 static int readBattery() {
   uint32_t mv = 0;
+#ifdef ESP8266
+  // A0 vom D1 Mini hat schon 220k/100k drauf, mit den 100k extra sind 4.2V am Akku = 1023
+  for (int i = 0; i < 8; i++) mv += analogRead(PIN_BAT);
+  mv = mv / 8 * 4200 / 1023;
+#else
   for (int i = 0; i < 8; i++) mv += analogReadMilliVolts(PIN_BAT);
   mv = mv / 8 * 2;
+#endif
   if (mv < 2500) return -1;
   return constrain(map(mv, 3300, 4150, 0, 100), 0, 100);
 }
@@ -121,10 +128,14 @@ static void onUnlinked() {
 }
 
 static void startRun() {
-  Serial.println("[run] verbinde mit " + cfg.server);
+  LOG("[run] verbinde mit " + cfg.server);
   mode = M_RUN;
   WiFi.setAutoReconnect(true);
+#ifdef ESP8266
+  configTime(TZ_INFO, "pool.ntp.org", "time.google.com");
+#else
   configTzTime(TZ_INFO, "pool.ntp.org", "time.google.com");
+#endif
   psBegin({onAlarm, onRound, onUnlinked});
   backlight(cfg.light);
   lastInput = millis();
@@ -132,7 +143,7 @@ static void startRun() {
 }
 
 static void startAccountSetup(bool withAP) {
-  Serial.println("[setup] warte auf Anmeldung, Einrichtungsseite ist offen");
+  LOG("[setup] warte auf Anmeldung, Einrichtungsseite ist offen");
   mode = M_SETUP_ACCOUNT;
   setupState = SS_ACCOUNT;
   portalBegin(withAP);
@@ -141,7 +152,11 @@ static void startAccountSetup(bool withAP) {
 
 static bool connectSaved() {
   WiFi.mode(WIFI_STA);
+#ifdef ESP8266
+  WiFi.hostname(apName());
+#else
   WiFi.setHostname(apName().c_str());
+#endif
   WiFi.begin(cfg.ssid.c_str(), cfg.pass.c_str());
   uiSetup("PagerSpass", "Verbinde mit WLAN", cfg.ssid, "", "");
   uint32_t t = millis();
@@ -285,7 +300,7 @@ static void drawInfo() {
   l[7] = "Akku: " + (bat >= 0 ? String(String(bat) + " %") : String("USB"));
   l[8] = "Nachrichten: " + String(msgCount) + " (" + unreadCount() + " neu)";
   l[9] = "Laufzeit: " + String(millis() / 60000) + " min";
-  uiInfo(l, 10);
+  infoScroll = uiInfo(l, 10, infoScroll);
 }
 
 static void askConfirm(Confirm c) {
@@ -366,7 +381,7 @@ static void handleButton(Btn b) {
           case MN_TONE: editing = MN_TONE; editVal = cfg.tone; go(S_VALUE); break;
           case MN_LIGHT: editing = MN_LIGHT; editVal = cfg.light; go(S_VALUE); break;
           case MN_MUTE: cfg.mute = !cfg.mute; saveSettings(); break;
-          case MN_INFO: go(S_INFO); break;
+          case MN_INFO: infoScroll = 0; go(S_INFO); break;
           case MN_WIFI: askConfirm(C_WIFI); break;
           case MN_UNLINK: askConfirm(C_UNLINK); break;
           case MN_RESET: askConfirm(C_RESET); break;
@@ -389,7 +404,7 @@ static void handleButton(Btn b) {
       if (b == B_BACK) { listSel = msgIdx; go(S_LIST); }
       else if (b == B_OK || b == B_OK_LONG) askConfirm(C_DELETE);
       else if (b == B_DOWN) {
-        if (msgScroll + 7 < msgLines) msgScroll++;
+        if (msgScroll + 5 < msgLines) msgScroll++;
         else if (msgIdx + 1 < msgCount) openMsg(msgIdx + 1);
       } else if (b == B_UP) {
         if (msgScroll > 0) msgScroll--;
@@ -431,6 +446,8 @@ static void handleButton(Btn b) {
 
     case S_INFO:
       if (b == B_BACK || b == B_OK) go(S_MENU);
+      else if (b == B_DOWN) { infoScroll++; dirty = true; }
+      else if (b == B_UP && infoScroll > 0) { infoScroll--; dirty = true; }
       break;
   }
 }
@@ -504,13 +521,15 @@ static void runLoop() {
 }
 
 void setup() {
+#ifndef ESP8266
   Serial.begin(115200);
-  Serial.println("\n[boot] PagerSpass Pager " FW_VERSION);
+#endif
+  LOG("\n[boot] PagerSpass Pager " FW_VERSION);
   storeBegin();
   buttonsBegin();
   soundBegin();
   displayBegin();
-  Serial.println("[boot] Display gestartet");
+  LOG("[boot] Display gestartet");
   uiWelcome();
   backlight(4);
   playBeep();
@@ -533,15 +552,15 @@ void setup() {
     }
   }
 
-  Serial.println("[wifi] verbinde mit " + cfg.ssid);
+  LOG("[wifi] verbinde mit " + cfg.ssid);
   if (cfg.ssid.length() && connectSaved()) {
-    Serial.println("[wifi] verbunden, IP " + WiFi.localIP().toString());
+    LOG("[wifi] verbunden, IP " + WiFi.localIP().toString());
     if (cfg.token.length()) startRun();
     else startAccountSetup(false);
     return;
   }
 
-  Serial.println("[wifi] kein WLAN, starte Einrichtung " + apName());
+  LOG("[wifi] kein WLAN, starte Einrichtung " + apName());
   mode = M_SETUP_WIFI;
   setupState = cfg.ssid.length() ? SS_WIFI_FAIL : SS_WIFI;
   if (cfg.ssid.length()) setupError = "Gespeichertes WLAN \"" + cfg.ssid + "\" nicht erreichbar";

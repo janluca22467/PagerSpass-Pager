@@ -1,16 +1,14 @@
 #include "portal.h"
 #include "store.h"
-#include <WiFi.h>
-#include <WebServer.h>
+#include "plattform.h"
 #include <DNSServer.h>
-#include <ESPmDNS.h>
 #include <ArduinoJson.h>
 
 SetupState setupState = SS_WIFI;
 String setupError;
 String setupHint;
 
-static WebServer server(80);
+static WebServerT server(80);
 static DNSServer dns;
 static bool running = false;
 static bool apOn = false;
@@ -220,6 +218,9 @@ void portalLoop() {
   if (!running) return;
   if (apOn) dns.processNextRequest();
   server.handleClient();
+#ifdef ESP8266
+  MDNS.update();
+#endif
 }
 
 void portalStop() {

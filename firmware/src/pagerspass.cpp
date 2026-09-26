@@ -1,8 +1,6 @@
 #include "pagerspass.h"
 #include "store.h"
-#include <WiFi.h>
-#include <WiFiClientSecure.h>
-#include <HTTPClient.h>
+#include "plattform.h"
 #include <WebSocketsClient.h>
 #include <ArduinoJson.h>
 
@@ -43,7 +41,7 @@ static Login post(String server, const String &path, JsonDocument &req, bool ret
   Url u = parseUrl(server);
   String url = String(u.tls ? "https://" : "http://") + u.host + ":" + u.port + u.base + path;
 
-  WiFiClientSecure secure;
+  SecureClient secure;
   WiFiClient plain;
   secure.setInsecure();
   HTTPClient http;
@@ -66,7 +64,7 @@ static Login post(String server, const String &path, JsonDocument &req, bool ret
   if ((code == 301 || code == 302 || code == 307 || code == 308) && retry && location.startsWith("http")) {
     int cut = location.indexOf(path);
     String next = cut > 0 ? location.substring(0, cut) : location;
-    Serial.println("[http] umgeleitet nach " + next);
+    LOG("[http] umgeleitet nach " + next);
     return post(next, path, req, false);
   }
 
@@ -180,10 +178,10 @@ static void onEvent(WStype_t type, uint8_t *payload, size_t len) {
   switch (type) {
     case WStype_CONNECTED:
       online = true;
-      Serial.println("[ps] verbunden");
+      LOG("[ps] verbunden");
       break;
     case WStype_DISCONNECTED:
-      if (online) Serial.println("[ps] getrennt");
+      if (online) LOG("[ps] getrennt");
       online = false;
       break;
     case WStype_TEXT:

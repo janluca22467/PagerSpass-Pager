@@ -73,14 +73,14 @@ def einstimmig(zyklus):
     return teile
 
 
-zeilen = ["// automatisch erzeugt von tools/meldertoene/holen.py, nicht von Hand aendern", "#pragma once", "#include <stdint.h>", "",
+zeilen = ["// automatisch erzeugt von tools/meldertoene/holen.py, nicht von Hand aendern", "#pragma once", "#include <Arduino.h>", "",
           "struct Seg { uint16_t f0, f1, ms; };", "struct SpielTon { const char *id; const char *name; const Seg *seg[3]; uint8_t len[3]; };", ""]
 namen = []
 for t in daten:
     var = "t_" + t["id"]
     for p, z in enumerate(t["z"]):
         teile = einstimmig(z)
-        zeilen.append(f"static const Seg {var}_{p}[] = {{" + ", ".join(f"{{{a},{b},{c}}}" for a, b, c in teile) + "};")
+        zeilen.append(f"static const Seg {var}_{p}[] PROGMEM = {{" + ", ".join(f"{{{a},{b},{c}}}" for a, b, c in teile) + "};")
     namen.append(t)
 zeilen += ["", "static const SpielTon SPIEL_TOENE[] = {"]
 for t in namen:

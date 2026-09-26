@@ -1,40 +1,55 @@
 #include "display.h"
 #include "config.h"
 #include <SPI.h>
+#include "plattform.h"
 
-// im Simulator (Wokwi) gibt es kein ST7789, der ILI9341 hat aber auch 320x240
+// im Simulator (Wokwi) gibt es kein ST7789, da nehmen wir einen ILI9341 (320x240)
+// und nutzen davon nur einen Streifen mit 170 Pixel Hoehe
 #ifdef SIM
 #include <Adafruit_ILI9341.h>
 static Adafruit_ILI9341 tft(&SPI, PIN_TFT_DC, PIN_TFT_CS, PIN_TFT_RST);
 #else
 #include <Adafruit_ST7789.h>
+#ifdef ESP8266
+static Adafruit_ST7789 tft(PIN_TFT_CS, PIN_TFT_DC, PIN_TFT_RST);
+#else
 static Adafruit_ST7789 tft(&SPI, PIN_TFT_CS, PIN_TFT_DC, PIN_TFT_RST);
 #endif
+#endif
 GFXcanvas1 cv(SCREEN_W, SCREEN_H);
-U8G2_FOR_ADAFRUIT_GFX u8;
+U8G2_FOR_ADAFRUIT_GFX ufont;
 
 // LCD-Optik wie beim echten Melder: grau-blauer Hintergrund, dunkelblaue Schrift
-static const uint16_t COL_BG = ((178 & 0xF8) << 8) | ((192 & 0xFC) << 3) | (204 >> 3);
-static const uint16_t COL_FG = ((34 & 0xF8) << 8) | ((44 & 0xFC) << 3) | (110 >> 3);
+static const uint16_t COL_BG = ((196 & 0xF8) << 8) | ((208 & 0xFC) << 3) | (216 >> 3);
+static const uint16_t COL_FG = ((12 & 0xF8) << 8) | ((22 & 0xFC) << 3) | (84 >> 3);
 
 void displayBegin() {
+#ifdef ESP8266
+  pinMode(PIN_TFT_BL, OUTPUT);
+  backlight(0);
+  SPI.begin();
+#else
   ledcSetup(1, 5000, 8);
   ledcAttachPin(PIN_TFT_BL, 1);
   backlight(0);
-
   SPI.begin(PIN_SCK, -1, PIN_MOSI, PIN_TFT_CS);
+#endif
 #ifdef SIM
   tft.begin(40000000);
 #else
-  tft.init(240, 320);
+  tft.init(170, 320);
   tft.setSPISpeed(40000000);
 #endif
   tft.setRotation(1);
+#ifdef SIM
+  tft.fillScreen(0);
+#else
   tft.fillScreen(COL_BG);
+#endif
 
-  u8.begin(cv);
-  u8.setFontMode(1);
-  u8.setFontDirection(0);
+  ufont.begin(cv);
+  ufont.setFontMode(1);
+  ufont.setFontDirection(0);
 }
 
 void displayPush() {
@@ -42,7 +57,11 @@ void displayPush() {
   const uint8_t *buf = cv.getBuffer();
   const int stride = (SCREEN_W + 7) / 8;
   tft.startWrite();
+#ifdef SIM
+  tft.setAddrWindow(0, (240 - SCREEN_H) / 2, SCREEN_W, SCREEN_H);
+#else
   tft.setAddrWindow(0, 0, SCREEN_W, SCREEN_H);
+#endif
   for (int y = 0; y < SCREEN_H; y++) {
     const uint8_t *row = buf + y * stride;
     for (int x = 0; x < SCREEN_W; x++)
@@ -53,8 +72,12 @@ void displayPush() {
 }
 
 void backlight(uint8_t level) {
-  static const uint8_t duty[] = {0, 10, 40, 90, 160, 255};
-  ledcWrite(1, duty[min<uint8_t>(level, 5)]);
+  static const uint16_t duty[] = {0, 40, 160, 360, 640, 1023};
+#ifdef ESP8266
+  analogWrite(PIN_TFT_BL, duty[min<uint8_t>(level, 5)]);
+#else
+  ledcWrite(1, duty[min<uint8_t>(level, 5)] >> 2);
+#endif
 }
 
 void clearScreen() {
@@ -62,17 +85,17 @@ void clearScreen() {
 }
 
 void textAt(int x, int y, const String &s, const uint8_t *font, bool inv) {
-  u8.setFont(font);
+  ufont.setFont(font);
   // setFont schaltet den Hintergrund jedes Mal wieder an, darum hier immer neu setzen
-  u8.setFontMode(1);
-  u8.setForegroundColor(inv ? 0 : 1);
-  u8.setBackgroundColor(inv ? 1 : 0);
-  u8.drawUTF8(x, y, s.c_str());
+  ufont.setFontMode(1);
+  ufont.setForegroundColor(inv ? 0 : 1);
+  ufont.setBackgroundColor(inv ? 1 : 0);
+  ufont.drawUTF8(x, y, s.c_str());
 }
 
 int textWidth(const String &s, const uint8_t *font) {
-  u8.setFont(font);
-  return u8.getUTF8Width(s.c_str());
+  ufont.setFont(font);
+  return ufont.getUTF8Width(s.c_str());
 }
 
 void textCenter(int y, const String &s, const uint8_t *font) {
@@ -84,9 +107,9 @@ void textRight(int x, int y, const String &s, const uint8_t *font, bool inv) {
 }
 
 void headerBar(const String &left, const String &right) {
-  cv.fillRect(0, 0, SCREEN_W, 26, 1);
-  textAt(6, 20, left, u8g2_font_helvR14_tf, true);
-  textRight(SCREEN_W - 6, 20, right, u8g2_font_helvR14_tf, true);
+  cv.fillRect(0, 0, SCREEN_W, HEADER_H, 1);
+  textAt(6, 18, left, u8g2_font_helvB14_tf, true);
+  textRight(SCREEN_W - 6, 18, right, u8g2_font_helvB14_tf, true);
 }
 
 static int utf8Len(uint8_t c) {
@@ -97,11 +120,11 @@ static int utf8Len(uint8_t c) {
 }
 
 int wrapText(const String &s, const uint8_t *font, int w, String *lines, int maxLines) {
-  u8.setFont(font);
+  ufont.setFont(font);
   int n = 0;
   String cur;
   String word;
-  auto fits = [&](const String &t) { return u8.getUTF8Width(t.c_str()) <= w; };
+  auto fits = [&](const String &t) { return ufont.getUTF8Width(t.c_str()) <= w; };
   auto push = [&](const String &t) {
     if (n < maxLines) lines[n] = t;
     n++;

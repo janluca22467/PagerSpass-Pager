@@ -1,50 +1,75 @@
 #include "store.h"
-#include <Preferences.h>
+#include <LittleFS.h>
+#include <ArduinoJson.h>
 
 Settings cfg;
 Msg msgs[MAX_MSGS];
 int msgCount = 0;
 
-static Preferences prefs;
+static void mount() {
+#ifdef ESP8266
+  if (!LittleFS.begin()) {
+    LittleFS.format();
+    LittleFS.begin();
+  }
+#else
+  LittleFS.begin(true);
+#endif
+}
 
 void storeBegin() {
-  prefs.begin("pager", false);
+  mount();
+  JsonDocument doc;
+  File f = LittleFS.open("/cfg.json", "r");
+  if (f) {
+    deserializeJson(doc, f);
+    f.close();
+  }
 #ifdef SIM
-  cfg.ssid = prefs.getString("ssid", "Wokwi-GUEST");
+  cfg.ssid = doc["ssid"] | "Wokwi-GUEST";
 #else
-  cfg.ssid = prefs.getString("ssid", "");
+  cfg.ssid = doc["ssid"] | "";
 #endif
-  cfg.pass = prefs.getString("pass", "");
-  cfg.server = prefs.getString("server", DEFAULT_SERVER);
-  cfg.token = prefs.getString("token", "");
-  cfg.user = prefs.getString("user", "");
-  cfg.volume = prefs.getUChar("vol", 3);
-  cfg.tone = prefs.getUChar("tone", 0);
-  cfg.light = prefs.getUChar("light", 4);
-  cfg.mute = prefs.getBool("mute", false);
+  cfg.pass = doc["pass"] | "";
+  cfg.server = doc["server"] | DEFAULT_SERVER;
+  cfg.token = doc["token"] | "";
+  cfg.user = doc["user"] | "";
+  cfg.volume = doc["vol"] | 3;
+  cfg.tone = doc["tone"] | 0;
+  cfg.light = doc["light"] | 4;
+  cfg.mute = doc["mute"] | false;
 
-  msgCount = prefs.getInt("mcount", 0);
-  if (msgCount < 0 || msgCount > MAX_MSGS) msgCount = 0;
-  if (prefs.getBytesLength("msgs") != sizeof(Msg) * msgCount) msgCount = 0;
-  if (msgCount) prefs.getBytes("msgs", msgs, sizeof(Msg) * msgCount);
+  f = LittleFS.open("/msgs.bin", "r");
+  if (f) {
+    msgCount = f.size() / sizeof(Msg);
+    if (msgCount > MAX_MSGS || f.size() % sizeof(Msg)) msgCount = 0;
+    f.read((uint8_t *)msgs, sizeof(Msg) * msgCount);
+    f.close();
+  }
 }
 
 void saveSettings() {
-  prefs.putString("ssid", cfg.ssid);
-  prefs.putString("pass", cfg.pass);
-  prefs.putString("server", cfg.server);
-  prefs.putString("token", cfg.token);
-  prefs.putString("user", cfg.user);
-  prefs.putUChar("vol", cfg.volume);
-  prefs.putUChar("tone", cfg.tone);
-  prefs.putUChar("light", cfg.light);
-  prefs.putBool("mute", cfg.mute);
+  JsonDocument doc;
+  doc["ssid"] = cfg.ssid;
+  doc["pass"] = cfg.pass;
+  doc["server"] = cfg.server;
+  doc["token"] = cfg.token;
+  doc["user"] = cfg.user;
+  doc["vol"] = cfg.volume;
+  doc["tone"] = cfg.tone;
+  doc["light"] = cfg.light;
+  doc["mute"] = cfg.mute;
+  File f = LittleFS.open("/cfg.json", "w");
+  if (!f) return;
+  serializeJson(doc, f);
+  f.close();
 }
 
 void saveMsgs() {
-  prefs.putInt("mcount", msgCount);
-  if (msgCount) prefs.putBytes("msgs", msgs, sizeof(Msg) * msgCount);
-  else prefs.remove("msgs");
+  File f = LittleFS.open("/msgs.bin", "w");
+  if (!f) return;
+  f.write((const uint8_t *)msgs, sizeof(Msg) * msgCount);
+  f.close();
 }
 
 void addMsg(const Msg &m) {
@@ -74,14 +99,20 @@ int unreadCount() {
 }
 
 void factoryReset() {
-  prefs.clear();
+  LittleFS.remove("/cfg.json");
+  LittleFS.remove("/msgs.bin");
   delay(100);
   ESP.restart();
 }
 
 String deviceId() {
+#ifdef ESP8266
+  uint32_t id = ESP.getChipId();
+#else
   uint64_t mac = ESP.getEfuseMac();
+  uint32_t id = (uint32_t)((mac >> 32) ^ (mac >> 16));
+#endif
   char buf[8];
-  snprintf(buf, sizeof(buf), "%04X", (uint16_t)((mac >> 32) ^ (mac >> 16)));
+  snprintf(buf, sizeof(buf), "%04X", (uint16_t)id);
   return String(buf);
 }
