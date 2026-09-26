@@ -26,13 +26,13 @@ Du bist in einer Runde am PC, es kommt ein Alarm – und der Melder auf dem Tisc
 
 ## Teile
 
-ESP32-C3 SuperMini, 2" ST7789 Display, 4 Taster, Mini-Lautsprecher, rote LED, LiPo + TP4056. Zusammen ca. **15–20 €**. Genaue Liste: [docs/TEILELISTE.md](docs/TEILELISTE.md)
+WeMos D1 Mini (ESP8266), 1.9" ST7789 Display (170x320), 4 Taster, Mini-Lautsprecher, rote LED, LiPo + TP4056. Zusammen ca. **15–20 €**. Genaue Liste: [docs/TEILELISTE.md](docs/TEILELISTE.md)
 
 ## Ordner
 
 | Ordner | Inhalt |
 |---|---|
-| `firmware/` | Code für den ESP32-C3 (PlatformIO) |
+| `firmware/` | Code für den D1 Mini (PlatformIO), dazu ein Simulator-Build |
 | `case/` | Gehäuse, OpenSCAD-Datei + fertige STL |
 | `hardware/` | Schaltplan |
 | `tools/testserver/` | Testserver zum Ausprobieren ohne Spiel |

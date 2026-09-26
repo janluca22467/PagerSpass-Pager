@@ -15,29 +15,25 @@ def net(d, name, at, direction="right", length=1.0):
 with schemdraw.Drawing(file="schaltplan.svg", show=False) as d:
     d.config(unit=2)
 
+    links = ["5V", "GND", "3V3", "RST", "A0", "D0", "D1", "D2"]
+    rechts = ["D8", "D7", "D6", "D5", "D4", "D3", "RX", "TX"]
     esp = d.add(elm.Ic(
-        pins=[
-            *[elm.IcPin(n, side="left", slot=f"{8 - i}/8") for i, n in
-              enumerate(["5V", "GND", "3V3", "GPIO4", "GPIO3", "GPIO2", "GPIO1", "GPIO0"])],
-            *[elm.IcPin(n, side="right", slot=f"{8 - i}/8") for i, n in
-              enumerate(["GPIO5", "GPIO6", "GPIO7", "GPIO8", "GPIO9", "GPIO10", "GPIO20", "GPIO21"])],
-        ],
+        pins=[*[elm.IcPin(n, side="left", slot=f"{8 - i}/8") for i, n in enumerate(links)],
+              *[elm.IcPin(n, side="right", slot=f"{8 - i}/8") for i, n in enumerate(rechts)]],
         edgepadW=2.2, pinspacing=0.9, leadlen=0.6,
-        label="ESP32-C3\nSuperMini",
+        label="WeMos\nD1 Mini\n(ESP8266)",
     ).at((0, 0)))
 
-    for pin, name in [("5V", "VSYS"), ("GND", "GND"), ("3V3", "3V3"), ("GPIO4", "TFT_SCK"),
-                      ("GPIO3", "TFT_RST"), ("GPIO2", "TFT_DC"), ("GPIO1", "LED"), ("GPIO0", "BAT_ADC")]:
+    for pin, name in zip(links, ["VSYS", "GND", "3V3", "TFT_RST", "BAT_ADC", "TFT_DC", "TFT_BLK", "SPK"]):
         net(d, name, getattr(esp, pin), "left")
-    for pin, name in [("GPIO5", "SPK"), ("GPIO6", "TFT_SDA"), ("GPIO7", "TFT_CS"), ("GPIO8", "BTN_ZURUECK"),
-                      ("GPIO9", "BTN_OK"), ("GPIO10", "TFT_BLK"), ("GPIO20", "BTN_HOCH"), ("GPIO21", "BTN_RUNTER")]:
+    for pin, name in zip(rechts, ["TFT_CS", "TFT_SDA", "BTN_HOCH", "TFT_SCK", "LED", "BTN_OK", "BTN_RUNTER", "BTN_ZURUECK"]):
         net(d, name, getattr(esp, pin), "right")
 
     tft = d.add(elm.Ic(
         pins=[elm.IcPin(n, side="left", slot=f"{8 - i}/8") for i, n in
               enumerate(["GND", "VCC", "SCL", "SDA", "RES", "DC", "CS", "BLK"])],
         edgepadW=1.8, pinspacing=0.9, leadlen=0.6,
-        label="TFT 2.0\"\nST7789\n240x320",
+        label="TFT 1.9\"\nST7789\n170x320",
     ).at((14, 0)))
     for pin, name in zip(["GND", "VCC", "SCL", "SDA", "RES", "DC", "CS", "BLK"],
                          ["GND", "3V3", "TFT_SCK", "TFT_SDA", "TFT_RST", "TFT_DC", "TFT_CS", "TFT_BLK"]):
@@ -62,17 +58,13 @@ with schemdraw.Drawing(file="schaltplan.svg", show=False) as d:
     d.add(elm.Line().right().at(tp["OUT-"]).length(3.3))
     d.add(elm.Ground())
 
-    # Akkuspannung
+    # Akkuspannung (A0 hat auf dem D1 Mini schon 220k/100k)
     xa = x0 + 13
     d.add(elm.Label().at((xa - 1, y0 + 2.2)).label("Akku messen", loc="right", fontsize=13))
     d.add(elm.Line().up().at((xa, y0)).length(0.5))
     d.add(elm.Dot(open=True).label("VSYS", loc="top"))
-    r4 = d.add(elm.Resistor().down().at((xa, y0)).label("R4\n100k", loc="bottom"))
-    d.add(elm.Dot())
-    d.add(elm.Line().right().length(0.8))
-    d.add(elm.Dot(open=True).label("BAT_ADC", loc="right"))
-    d.add(elm.Resistor().down().at(r4.end).label("R5\n100k", loc="bottom"))
-    d.add(elm.Ground())
+    d.add(elm.Resistor().down().at((xa, y0)).label("R4\n100k", loc="bottom"))
+    d.add(elm.Dot(open=True).label("BAT_ADC", loc="bottom"))
 
     # Lautsprecher
     xs = x0 + 19
@@ -84,7 +76,7 @@ with schemdraw.Drawing(file="schaltplan.svg", show=False) as d:
     d.add(elm.Dot())
     d.add(elm.Line().down().to((xk, y0 - 3)))
     d.add(elm.Line().right().length(0.6))
-    spk = d.add(elm.Speaker().theta(0).anchor("in1").label("LS1 8Ω 0.5W", loc="right", ofst=(0.9, -0.3)))
+    spk = d.add(elm.Speaker().theta(0).anchor("in1").label("LS1 8Ω", loc="right", ofst=(0.9, -0.3)))
     d.add(elm.Line().at(spk.in2).to((xk, spk.in2[1])))
     d.add(elm.Line().down().to((xk, y0 - 4.2)))
     d.add(elm.Dot())
@@ -97,14 +89,15 @@ with schemdraw.Drawing(file="schaltplan.svg", show=False) as d:
     d.add(elm.Diode().at((xk - 2.4, y0 - 4.2)).to((xk - 2.4, y0 - 2.3)).label("D1\n1N4148", loc="top"))
     d.add(elm.Line().at((xk - 2.4, y0 - 4.2)).to((xk, y0 - 4.2)))
 
-    # LED
+    # LED (gegen 3V3, D4 LOW = an)
     xl = x0 + 30
     d.add(elm.Label().at((xl - 1, y0 + 2.2)).label("Alarm-LED", loc="right", fontsize=13))
     d.add(elm.Line().up().at((xl, y0)).length(0.5))
-    d.add(elm.Dot(open=True).label("LED", loc="top"))
+    d.add(elm.Dot(open=True).label("3V3", loc="top"))
     d.add(elm.Resistor().down().at((xl, y0)).label("R3\n330Ω", loc="bottom"))
     d.add(elm.LED().down().label("D2 rot\n3mm", loc="bottom"))
-    d.add(elm.Ground())
+    d.add(elm.Line().down().length(0.5))
+    d.add(elm.Dot(open=True).label("LED", loc="bottom"))
 
     # Tasten
     xt = x0 + 35

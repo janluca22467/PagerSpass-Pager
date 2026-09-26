@@ -2,7 +2,10 @@
 
 Mit **Wokwi** läuft die echte Firmware im Simulator: Display, Tasten, LED und Piepser sind auf dem Bildschirm, WLAN geht auch.
 
-Einziger Unterschied zum echten Gerät: Wokwi hat kein ST7789-Display, darum nimmt der Simulator-Build ein ILI9341 (auch 320x240). Sonst ist alles gleich.
+Unterschiede zum echten Gerät:
+
+- Wokwi kann keinen ESP8266, darum läuft der Simulator auf einem **ESP32**. Der Code ist derselbe, nur die Pins sind andere.
+- Wokwi hat kein 1.9" ST7789, darum nimmt der Simulator ein ILI9341 und nutzt davon einen Streifen mit 320x170 Pixeln.
 
 ## Einmal einrichten
 
