@@ -14,14 +14,17 @@ r_edge = 3;
 roll_r = 13;
 roll_x = body_w;
 
-disp_pcb = [60.4, 35.4];
+// 1.9" ST7789 170x320 - vor dem Drucken am eigenen Modul nachmessen!
+disp_pcb = [57.8, 33.4];
 disp_pos = [6, 16];
-disp_win = [44, 34];
-disp_win_off = [3, 0];
+disp_win = [43.5, 23.5];
+disp_win_off = [2, 0];
 
 top_btns = [[16, 7], [38, 14], [57, 14]];
 btn_z = 9;
 btn_depth = 5;
+// Taster 6x6x4.3: Platine im Halter, Stoessel bis kurz vor den Knopf
+btn_stem = 2.2;
 side_btn_y = 40;
 side_btn_d = 8;
 
@@ -31,8 +34,11 @@ led_d = 3.1;
 spk_pos = [76, 20];
 spk_d = 20.4;
 
+// WeMos D1 Mini (25.6 x 34.2) und TP4056 (17.4 x 28.5), USB-C jeweils unten
+d1_size = [25.8, 34.4];
+tp_size = [17.6, 28.7];
 usb_esp_x = 19;
-usb_tp_x = 42.5;
+usb_tp_x = 48.5;
 usb_z = 20.6;
 
 screws = [[7, 7], [7, 57], [67, 7], [67, 57]];
@@ -136,10 +142,10 @@ module inner_parts() {
   for (c = clip_holes) translate([c[0], c[1], depth - wall - 4]) cylinder(d = 5, h = 4.01);
 
   // Platinenhalter hinten (ESP32-C3 + TP4056)
-  for (b = [[usb_esp_x, 18.4, 23], [usb_tp_x, 17.4, 28.5]])
+  for (b = [[usb_esp_x, d1_size[0], d1_size[1]], [usb_tp_x, tp_size[0], tp_size[1]]])
     for (sx = [-1, 1])
-      translate([b[0] + sx * (b[1] / 2 + 0.6) - 0.6, wall + 3, depth - wall - 2.5])
-        cube([1.2, b[2] - 6, 2.51]);
+      translate([b[0] + sx * (b[1] / 2 + 0.6) - 0.6, wall + 10, depth - wall - 2.5])
+        cube([1.2, b[2] - 12, 2.51]);
 }
 
 module shell() {
@@ -191,13 +197,13 @@ module back() {
 module btn_cap(w) {
   translate([-w / 2, -btn_depth / 2, 0]) rbox([w, btn_depth, 3.5], 1);
   translate([-(w + 2) / 2, -(btn_depth + 2) / 2, 2.5]) cube([w + 2, btn_depth + 2, 1]);
-  translate([0, 0, 3.4]) cylinder(d = 3, h = 1.6);
+  translate([0, 0, 3.4]) cylinder(d = 3, h = btn_stem);
 }
 
 module side_cap() {
   cylinder(d = side_btn_d, h = 3.5);
   translate([0, 0, 2.5]) cylinder(d = side_btn_d + 3, h = 1);
-  translate([0, 0, 3.4]) cylinder(d = 3, h = 1.6);
+  translate([0, 0, 3.4]) cylinder(d = 3, h = btn_stem);
 }
 
 module buttons() {
